@@ -1,6 +1,6 @@
 .env
 env/
-config.py
+#config.py
 
 node_modules/
 build/
