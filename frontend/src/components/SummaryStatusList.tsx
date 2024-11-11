@@ -17,7 +17,7 @@ const SummaryStatusList: React.FC<SummaryStatusListProps> = ({ requests }) => {
   const downloadSummary = (url: string) => {
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'summary.pdf';
+    link.download = 'summary.docx';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

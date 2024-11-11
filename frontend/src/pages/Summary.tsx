@@ -133,62 +133,60 @@ const Summary: React.FC = () => {
 
   const generateSummary = async () => {
     if (documents.length === 0 || !summaryType) {
-      setStatus('error');
-      setSummary('Please upload documents and select a summary type');
-      return;
+        setStatus('error');
+        setSummary('Please upload documents and select a summary type');
+        return;
     }
 
     const requestId = Date.now().toString();
     const newRequest: SummaryRequest = {
-      id: requestId,
-      status: 'processing',
-      downloadUrl: null,
+        id: requestId,
+        status: 'processing',
+        downloadUrl: null,
     };
     setSummaryRequests([...summaryRequests, newRequest]);
 
+    const document = documents[0];
     const formData = new FormData();
-    documents.forEach((doc, index) => {
-      formData.append(`file`, doc.file);
-      formData.append(`type`, doc.type);
-    });
-    formData.append("summary_type", summaryType);
+    formData.append('file', document.file);
+    formData.append('type', document.type);
+    formData.append('summary_type', summaryType);
 
     try {
-      setStatus('processing');
-      const response = await fetch('http://localhost:8000/generate_summary', {
-        method: 'POST',
-        body: formData,
-      });
+        setStatus('processing');
+        const response = await fetch('http://localhost:8000/generate_summary', {
+            method: 'POST',
+            body: formData,
+        });
 
-      if (!response.ok) {
-        throw new Error('Failed to generate summary');
-      }
+        if (!response.ok) {
+            throw new Error('Failed to generate summary');
+        }
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
 
-      setSummaryRequests(prevRequests =>
-        prevRequests.map(req =>
-          req.id === requestId
-            ? { ...req, status: 'complete', downloadUrl: url }
-            : req
-        )
-      );
+        setSummaryRequests(prevRequests =>
+            prevRequests.map(req =>
+                req.id === requestId
+                    ? { ...req, status: 'complete', downloadUrl: url }
+                    : req
+            )
+        );
 
-      setDocuments([]);
-      setSummaryType("");
-      setStatus('idle');
-      setSummary('');
+        setDocuments([]);
+        setSummaryType('');
+        setStatus('idle');
     } catch (error) {
-      setDocuments([]);
-      console.error('Error generating summary:', error);
-      setSummaryRequests(prevRequests =>
-        prevRequests.map(req =>
-          req.id === requestId
-            ? { ...req, status: 'error' }
-            : req
-        )
-      );
+        console.error('Error generating summary:', error);
+        setSummaryRequests(prevRequests =>
+            prevRequests.map(req =>
+                req.id === requestId
+                    ? { ...req, status: 'error' }
+                    : req
+            )
+        );
+        setStatus('error');
     }
   };
 
@@ -196,7 +194,7 @@ const Summary: React.FC = () => {
     if (downloadUrl) {
       const link = document.createElement('a');
       link.href = downloadUrl;
-      link.download = 'summary.pdf';
+      link.download = 'summary.docx';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
