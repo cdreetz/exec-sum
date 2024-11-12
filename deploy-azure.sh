@@ -13,6 +13,10 @@ SKU="F1"
 echo "Cleaning up existing resources..."
 az group delete --name $RESOURCE_GROUP --yes || true
 
+# Wait a moment for cleanup
+echo "Waiting for cleanup to complete..."
+sleep 30
+
 # Create new resource group
 echo "Creating resource group..."
 az group create --name $RESOURCE_GROUP --location $LOCATION
@@ -31,8 +35,7 @@ az webapp create \
     --resource-group $RESOURCE_GROUP \
     --plan ${APP_NAME}-plan \
     --name $APP_NAME \
-    --runtime "PYTHON|3.8" \
-    --startup-file "./build_script.sh"
+    --runtime "PYTHON|3.8"
 
 # Configure environment variables
 echo "Configuring environment variables..."
@@ -47,12 +50,28 @@ az webapp config appsettings set \
     SCM_DO_BUILD_DURING_DEPLOYMENT="true" \
     WEBSITES_PORT="8000"
 
-# Deploy the code
-echo "Deploying application..."
-az webapp up \
+# Configure the build command
+echo "Configuring startup command..."
+az webapp config set \
     --resource-group $RESOURCE_GROUP \
     --name $APP_NAME \
-    --runtime "PYTHON:3.8" \
-    --os-type linux
+    --startup-file "build_script.sh"
 
-echo "Deployment complete! Your app should be available at: https://${APP_NAME}.azurewebsites.net"
+# Deploy using local-git instead of zip deploy
+echo "Configuring local git deployment..."
+az webapp deployment source config-local-git \
+    --name $APP_NAME \
+    --resource-group $RESOURCE_GROUP
+
+# Get the git URL
+GIT_URL=$(az webapp deployment source config-local-git \
+    --name $APP_NAME \
+    --resource-group $RESOURCE_GROUP \
+    --query url -o tsv)
+
+echo "Git deployment URL: $GIT_URL"
+echo "To deploy your code, run:"
+echo "git remote add azure $GIT_URL"
+echo "git push azure main"
+
+echo "Once deployed, your app will be available at: https://${APP_NAME}.azurewebsites.net"

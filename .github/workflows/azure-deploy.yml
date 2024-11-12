@@ -5,39 +5,23 @@ on:
     branches: [ master ]
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     
     steps:
     - uses: actions/checkout@v2
     
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.8'
-    
-    - name: Set up Node.js
-      uses: actions/setup-node@v2
-      with:
-        node-version: '16'
-        
-    - name: Install frontend dependencies
-      run: |
-        cd frontend
-        npm install
-        
-    - name: Build frontend
-      run: |
-        cd frontend
-        npm run build
-        
-    - name: Install backend dependencies
-      run: |
-        cd backend
-        pip install -r requirements.txt
-        
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v2
       with:
         app-name: 'doc-sum-app'
-        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }} 
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+
+    - name: Configure startup command
+      uses: azure/CLI@v1
+      with:
+        inlineScript: |
+          az webapp config set \
+            --resource-group doc-sum-rg \
+            --name doc-sum-app \
+            --startup-command "./build_script.sh" 
