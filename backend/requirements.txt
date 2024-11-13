@@ -3,3 +3,6 @@ uvicorn
 python-multipart
 pydantic-settings
 python-docx
+openai
+azure-ai-documentintelligence
+azure-core

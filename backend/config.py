@@ -24,12 +24,12 @@ class Settings(BaseSettings):
     BUILD_DIR: str = "../frontend/build"
     
     # Azure Document Intelligence settings
-    AZURE_ENDPOINT: str = "your_endpoint"
-    AZURE_API_KEY: str = "your_azure_document_intelligence_key"
+    AZURE_ENDPOINT: str = "https://my-static-app-document-intelligence.cognitiveservices.azure.com/"
+    AZURE_API_KEY: str = "bb5206945b0c4c548c758a8949ed2cdb"
     
     # Azure OpenAI settings
-    OPENAI_ENDPOINT: str = "https://your-openai-endpoint.openai.azure.com/"
-    AZURE_OPENAI_API_KEY: str = "your_azure_openai_api_key"
+    OPENAI_ENDPOINT: str = "https://my-static-app-openai.openai.azure.com/"
+    AZURE_OPENAI_API_KEY: str = "bb466ff118a84ba28e5072d8f59e6379"
     
     class Config:
         case_sensitive = True

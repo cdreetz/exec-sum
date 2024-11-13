@@ -1,8 +1,7 @@
-
 import os
 import asyncio
 from typing import List
-from docx import Document
+from docx import Document as DocxDocument
 from config import settings
 from openai import AzureOpenAI
 from fastapi.responses import FileResponse
@@ -13,6 +12,7 @@ from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.core.credentials import AzureKeyCredential
 from pipeline.template import EXAMPLE_TEMPLATES
 from pipeline.pipeline import DocumentProcessor, Document
+from pipeline.document import Document as ProcessedDocument
 
 app = FastAPI()
 
@@ -54,7 +54,7 @@ async def serve_react_app(full_path: str):
     return FileResponse(os.path.join(settings.BUILD_DIR, "index.html"))
 
 @app.post("/example_generate_summary")
-async def generate_summary(
+async def example_generate_summary(
     file: UploadFile = File(...),
     type: str = Form(...),
     summary_type: str = Form(...)):
@@ -109,6 +109,7 @@ async def generate_summary(
     
     temp_dir = "temp_uploads"
     os.makedirs(temp_dir, exist_ok=True)
+    file_location = None
     
     try:
         # Save uploaded file
@@ -121,14 +122,17 @@ async def generate_summary(
         pipeline = DocumentProcessor(doc_client, openai_client)
         example_document = EXAMPLE_TEMPLATES.get(
             summary_type.lower(), 
-            EXAMPLE_TEMPLATES["brief"]  # Default to brief if invalid type
+            EXAMPLE_TEMPLATES["brief"]
         )
 
-        # Process the document
-        generated_document = pipeline.process_document(file_location, example_document)
+        # Process the document and create a new Document instance
+        processed_content = pipeline.process_document(
+            file_location, 
+            example_document
+        )
         
         # Create Word document with processed content
-        doc = Document()
+        doc = DocxDocument()
         doc.add_heading(f'Document Summary', 0)
         doc.add_paragraph(f'Summary Type: {summary_type}')
         
@@ -137,7 +141,7 @@ async def generate_summary(
         doc.add_paragraph(f'Type: {type}')
         
         # Add each section to the Word document
-        for section_name, content in generated_document.sections.items():
+        for section_name, content in processed_content.sections.items():
             doc.add_heading(section_name, level=2)
             doc.add_paragraph(content)
             
@@ -152,12 +156,16 @@ async def generate_summary(
         )
         
     except Exception as e:
+        print(f"Error processing document: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
     
     finally:
         # Cleanup temporary files
-        if os.path.exists(file_location):
-            os.remove(file_location)
+        if file_location and os.path.exists(file_location):
+            try:
+                os.remove(file_location)
+            except Exception as e:
+                print(f"Error cleaning up file: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

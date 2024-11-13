@@ -1,0 +1,6 @@
+name: doc-sum-app
+services:
+  - name: doc-sum-app
+    project: .
+    language: python
+    host: appservice

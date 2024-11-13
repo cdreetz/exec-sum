@@ -1,5 +1,6 @@
 .env
 env/
+__pycache__/
 #config.py
 
 node_modules/

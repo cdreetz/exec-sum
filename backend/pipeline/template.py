@@ -1,4 +1,4 @@
-from pipeline import Document
+from pipeline.document import Document
 
 # Create example document template based on summary type
 EXAMPLE_TEMPLATES = {

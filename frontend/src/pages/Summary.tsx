@@ -154,13 +154,14 @@ const Summary: React.FC = () => {
 
     try {
         setStatus('processing');
-        const response = await fetch('http://localhost:8000/generate_summary', {
+        const response = await fetch('http://localhost:8000/example_generate_summary', {
             method: 'POST',
             body: formData,
         });
 
         if (!response.ok) {
-            throw new Error('Failed to generate summary');
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || 'Failed to generate summary');
         }
 
         const blob = await response.blob();
@@ -182,11 +183,12 @@ const Summary: React.FC = () => {
         setSummaryRequests(prevRequests =>
             prevRequests.map(req =>
                 req.id === requestId
-                    ? { ...req, status: 'error' }
+                    ? { ...req, status: 'error', downloadUrl: null }
                     : req
             )
         );
         setStatus('error');
+        setSummary(error instanceof Error ? error.message : 'An unknown error occurred');
     }
   };
 
