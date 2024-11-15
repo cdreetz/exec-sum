@@ -3,9 +3,10 @@ from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.core.credentials import AzureKeyCredential
 from dataclasses import dataclass
 from openai import AzureOpenAI
-from typing import List, Dict
+from typing import List, Dict, Any
 from dotenv import load_dotenv
 import os
+import json
 
 load_dotenv()
 
@@ -16,8 +17,9 @@ load_dotenv()
 # Section 4: Other (anything else)
 
 class Document:
-    def __init__(self, sections: Dict[str, str]):
+    def __init__(self, sections: Dict[str, str], tables: List[Dict[str, Any]] = None):
         self.sections = sections
+        self.tables = tables or []
 
 
 class DocumentProcessor:
@@ -26,7 +28,25 @@ class DocumentProcessor:
         self.openai_client = openai_client
 
     def process_document(self, pdf_path, example_document):
-        """Extract text from a PDF file"""
+        """Extract text from a PDF file and process it into sections"""
+        content, tables = self._extract_content(pdf_path)
+        
+        section_chunks = {}
+        for chunk in content:
+            section = self._ask_gpt_which_section(chunk['text'])
+            if section not in section_chunks:
+                section_chunks[section] = []
+            section_chunks[section].append(chunk['text'])
+
+        sections = {}
+        for section_name, section_content in section_chunks.items():
+            example_content = example_document.sections.get(section_name)
+            sections[section_name] = self._generate_section(section_content, example_content)
+
+        return Document(sections, tables)
+
+    def _extract_content(self, pdf_path):
+        """Extract and process content from a PDF file"""
         with open(pdf_path, "rb") as doc:
             file_content = doc.read()
             file_content_base64 = base64.b64encode(file_content).decode("utf-8")
@@ -48,6 +68,8 @@ class DocumentProcessor:
 
         # Filter paragraphs to exclude table content
         content = []
+        tables = []  # New list to store table data separately
+
         for paragraph in result.paragraphs:
             # Check if paragraph overlaps with any table
             para_start = paragraph.spans[0].offset
@@ -65,35 +87,30 @@ class DocumentProcessor:
                     'role': paragraph.role
                 })
 
+        # Updated table processing
         for table in result.tables:
             if len(table.cells) > 0:
-                table_data = []
                 headers = [cell.content.strip() for cell in table.cells[0]]
+                table_data = {
+                    'headers': headers,
+                    'rows': []
+                }
                 
                 for row_cells in table.cells[1:]:
                     row_data = {}
                     for header, cell in zip(headers, row_cells):
                         row_data[header] = cell.content.strip()
-                    table_data.append(row_data)
+                    table_data['rows'].append(row_data)
                 
+                tables.append(table_data)  # Store structured table data
+                # Add table reference to content for section classification
                 content.append({
-                    'text': str(table_data),
-                    'role': 'table'
+                    'text': f"Table with columns: {', '.join(headers)}",
+                    'role': 'table',
+                    'table_index': len(tables) - 1
                 })
 
-        section_chunks = {}
-        for chunk in content:
-            section = self._ask_gpt_which_section(chunk['text'])
-            if section not in section_chunks:
-                section_chunks[section] = []
-            section_chunks[section].append(chunk['text'])
-
-        sections = {}
-        for section_name, section_content in section_chunks.items():
-            example_content = example_document.sections.get(section_name)
-            sections[section_name] = self._generate_section(section_content, example_content)
-
-        return Document(sections)
+        return content, tables
 
     def _ask_gpt_which_section(self, text):
         """Ask GPT which section the text belongs to"""
@@ -114,12 +131,20 @@ class DocumentProcessor:
         return response.choices[0].message.content.strip()
 
     def _generate_section(self, section_content, example_content):
+        # Modify content processing to handle table references
+        processed_content = []
+        for chunk in section_content:
+            if chunk.get('role') == 'table':
+                processed_content.append(f"[Table {chunk.get('table_index', '?')}]")
+            else:
+                processed_content.append(chunk['text'])
+
         prompt = f"""Generate a section using these text chunks as source material.
         Here's an example of what the section should look like:
         {example_content}
 
         Source chunks:
-        {' '.join(section_content)}"""
+        {' '.join(processed_content)}"""
 
         response = self.openai_client.chat.completions.create(
             model="gpt-4o-mini",

@@ -10,6 +10,7 @@ import {
 import { Button } from "../components/ui/button";
 import { Loader2 } from "lucide-react";
 import SummaryStatusList from "../components/SummaryStatusList";
+import { Checkbox } from "../components/ui/checkbox";
 
 interface Document {
   name: string;
@@ -23,6 +24,9 @@ interface SummaryRequest {
   downloadUrl: string | null;
 }
 
+interface SummaryOptions {
+  includeTables: boolean;
+}
 
 const DocumentUpload: React.FC<{
   onFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -90,6 +94,30 @@ const SummaryTypeSelector: React.FC<{
   </div>
 );
 
+const SummaryOptionsSelector: React.FC<{
+  options: SummaryOptions;
+  onOptionsChange: (options: SummaryOptions) => void;
+}> = ({ options, onOptionsChange }) => (
+  <div>
+    <h3 className="text-lg font-semibold mb-2">Summary Options</h3>
+    <div className="flex items-center space-x-2">
+      <Checkbox
+        id="includeTables"
+        checked={options.includeTables}
+        onCheckedChange={(checked) => 
+          onOptionsChange({ ...options, includeTables: checked as boolean })
+        }
+      />
+      <label
+        htmlFor="includeTables"
+        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+      >
+        Include extracted tables
+      </label>
+    </div>
+  </div>
+);
+
 const SummaryDisplay: React.FC<{ summary: string }> = ({ summary }) => (
   <div>
     <h3 className="text-lg font-semibold mb-2">Generated Summary</h3>
@@ -106,6 +134,9 @@ const Summary: React.FC = () => {
   const [status, setStatus] = useState<'idle' | 'uploading' | 'processing' | 'complete' | 'error'>('idle');
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [summaryRequests, setSummaryRequests] = useState<SummaryRequest[]>([]);
+  const [summaryOptions, setSummaryOptions] = useState<SummaryOptions>({
+    includeTables: true
+  });
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -151,6 +182,7 @@ const Summary: React.FC = () => {
     formData.append('file', document.file);
     formData.append('type', document.type);
     formData.append('summary_type', summaryType);
+    formData.append('include_tables', summaryOptions.includeTables.toString());
 
     try {
         setStatus('processing');
@@ -221,6 +253,10 @@ const Summary: React.FC = () => {
             <SummaryTypeSelector
               summaryType={summaryType}
               onSummaryTypeChange={setSummaryType}
+            />
+            <SummaryOptionsSelector
+              options={summaryOptions}
+              onOptionsChange={setSummaryOptions}
             />
             <div className="flex justify-center space-x-4">
               <Button

@@ -105,7 +105,8 @@ async def example_generate_summary(
 async def generate_summary(
     file: UploadFile = File(...),
     type: str = Form(...),
-    summary_type: str = Form(...)):
+    summary_type: str = Form(...),
+    include_tables: bool = Form(True)):
     
     temp_dir = "temp_uploads"
     os.makedirs(temp_dir, exist_ok=True)
@@ -144,7 +145,28 @@ async def generate_summary(
         for section_name, content in processed_content.sections.items():
             doc.add_heading(section_name, level=2)
             doc.add_paragraph(content)
-            
+        
+        # Add tables only if include_tables is True
+        if include_tables and processed_content.tables:
+            doc.add_heading('Extracted Tables', level=1)
+            for i, table_data in enumerate(processed_content.tables):
+                doc.add_heading(f'Table {i + 1}', level=2)
+                
+                # Create table in Word document
+                table = doc.add_table(rows=1, cols=len(table_data['headers']))
+                table.style = 'Table Grid'
+                
+                # Add headers
+                header_cells = table.rows[0].cells
+                for i, header in enumerate(table_data['headers']):
+                    header_cells[i].text = header
+                
+                # Add data rows
+                for row_data in table_data['rows']:
+                    row_cells = table.add_row().cells
+                    for i, header in enumerate(table_data['headers']):
+                        row_cells[i].text = row_data[header]
+        
         # Save the generated summary
         output_path = os.path.join(temp_dir, "generated_summary.docx")
         doc.save(output_path)

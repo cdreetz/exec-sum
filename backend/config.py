@@ -1,6 +1,9 @@
 from pydantic_settings import BaseSettings
-from typing import List
+from typing import List, Optional
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class Settings(BaseSettings):
     # API Settings
@@ -8,11 +11,11 @@ class Settings(BaseSettings):
     API_HOST: str = "0.0.0.0"
     
     # Azure AD Auth Settings
-    AZURE_CLIENT_ID: str = "your_client_id"
-    AZURE_CLIENT_SECRET: str = "your_client_secret"
-    AZURE_TENANT_ID: str = "your_tenant_id"
-    REDIRECT_URI: str = "https://yourapp.azurewebsites.net/auth/callback"
-    SESSION_SECRET_KEY: str = "your_random_secret_key"
+    AZURE_CLIENT_ID: Optional[str] = None
+    AZURE_CLIENT_SECRET: Optional[str] = None
+    AZURE_TENANT_ID: Optional[str] = None
+    REDIRECT_URI: Optional[str] = None
+    SESSION_SECRET_KEY: Optional[str] = None
     
     # CORS Settings
     CORS_ORIGINS: List[str] = ["*"]
@@ -24,12 +27,12 @@ class Settings(BaseSettings):
     BUILD_DIR: str = "../frontend/build"
     
     # Azure Document Intelligence settings
-    AZURE_ENDPOINT: str = "https://my-static-app-document-intelligence.cognitiveservices.azure.com/"
-    AZURE_API_KEY: str = "bb5206945b0c4c548c758a8949ed2cdb"
+    AZURE_ENDPOINT: Optional[str] = None
+    AZURE_API_KEY: Optional[str] = None
     
     # Azure OpenAI settings
-    OPENAI_ENDPOINT: str = "https://my-static-app-openai.openai.azure.com/"
-    AZURE_OPENAI_API_KEY: str = "bb466ff118a84ba28e5072d8f59e6379"
+    OPENAI_ENDPOINT: Optional[str] = None
+    AZURE_OPENAI_API_KEY: Optional[str] = None
     
     class Config:
         case_sensitive = True
