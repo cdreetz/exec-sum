@@ -74,7 +74,7 @@ async def example_generate_summary(
         await asyncio.sleep(2)
 
         # Create a Word document with summary
-        doc = Document()
+        doc = DocxDocument()
         doc.add_heading(f'Document Summary', 0)
         doc.add_paragraph(f'Summary Type: {summary_type}')
         

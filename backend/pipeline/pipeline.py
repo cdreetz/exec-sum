@@ -33,15 +33,34 @@ class DocumentProcessor:
         
         section_chunks = {}
         for chunk in content:
-            section = self._ask_gpt_which_section(chunk['text'])
-            if section not in section_chunks:
-                section_chunks[section] = []
-            section_chunks[section].append(chunk['text'])
+            if chunk.get('role') == 'table':
+                table_index = chunk.get('table_index')
+                table_summary = tables[table_index]['metadata']['summary']
+                section = self._ask_gpt_which_section(
+                    chunk['text'],
+                    is_table=True,
+                    table_summary=table_summary
+                )
+                if section not in section_chunks:
+                    section_chunks[section] = []
+                section_chunks[section].append({
+                    'text': chunk['text'],
+                    'is_table': True,
+                    'table_index': table_index
+                })
+            else:
+                section = self._ask_gpt_which_section(chunk['text'])
+                if section not in section_chunks:
+                    section_chunks[section] = []
+                section_chunks[section].append({
+                    'text': chunk['text'],
+                    'is_table': False
+                })
 
         sections = {}
         for section_name, section_content in section_chunks.items():
             example_content = example_document.sections.get(section_name)
-            sections[section_name] = self._generate_section(section_content, example_content)
+            sections[section_name] = self._generate_section(section_content, example_content, tables)
 
         return Document(sections, tables)
 
@@ -91,7 +110,7 @@ class DocumentProcessor:
         for table in result.tables:
             if len(table.cells) > 0:
                 headers = [cell.content.strip() for cell in table.cells[0]]
-                table_data = {
+                table_content = {
                     'headers': headers,
                     'rows': []
                 }
@@ -100,8 +119,17 @@ class DocumentProcessor:
                     row_data = {}
                     for header, cell in zip(headers, row_cells):
                         row_data[header] = cell.content.strip()
-                    table_data['rows'].append(row_data)
+                    table_content['rows'].append(row_data)
                 
+                table_data = {
+                    'content': table_content,
+                    'metadata': {
+                        'summary': None,
+                        'description': None
+                    }
+                }
+                table_data['metadata']['summary'] = self._generate_table_summary(table_data)
+
                 tables.append(table_data)  # Store structured table data
                 # Add table reference to content for section classification
                 content.append({
@@ -112,17 +140,26 @@ class DocumentProcessor:
 
         return content, tables
 
-    def _ask_gpt_which_section(self, text):
+    def _ask_gpt_which_section(self, text, is_table=False, table_summary=None):
         """Ask GPT which section the text belongs to"""
-        prompt = f"""Which section does the following text belong to? Options are:
+        base_prompt = f"""Which section does the following text belong to? Options are:
         - Water (floods, ports)
         - Fire (wildfires, fire stations)
         - Administrative (employees, establishments, admin support, etc.)
-        - Other (anything else)
+        - Other (anything else)"""
 
-        Text: {text}
+        if is_table:
+            prompt = f"""{base_prompt}
+            This is a table. Here's it's summary:
+            {table_summary}
+            Return only the section name, nothing else."""
 
-        Return only the section name, nothing else."""
+        else:
+            prompt = f"""{base_prompt}
+
+            Text: {text}
+
+            Return only the section name, nothing else."""
 
         response = self.openai_client.chat.completions.create(
             model="gpt-4o-mini",
@@ -130,12 +167,14 @@ class DocumentProcessor:
         )
         return response.choices[0].message.content.strip()
 
-    def _generate_section(self, section_content, example_content):
+    def _generate_section(self, section_content, example_content, tables):
         # Modify content processing to handle table references
         processed_content = []
         for chunk in section_content:
-            if chunk.get('role') == 'table':
-                processed_content.append(f"[Table {chunk.get('table_index', '?')}]")
+            if chunk['is_table']:
+                table = tables[chunk['table_index']]
+                table_summary = table['metadata']['summary']
+                processed_content.append(f"[Table {chunk['table_index']}: {table_summary}]")
             else:
                 processed_content.append(chunk['text'])
 
@@ -144,12 +183,35 @@ class DocumentProcessor:
         {example_content}
 
         Source chunks:
-        {' '.join(processed_content)}"""
+        {' '.join(processed_content)}
+
+        When referring to tables, incorporate the table information naturally into the narrative."""
 
         response = self.openai_client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
         )
+        return response.choices[0].message.content.strip()
+
+    def _generate_table_summary(self, table_data):
+        """Generate a summary description for a table"""
+        headers = table_data['content']['headers']
+        example_rows = table_data['content']['rows'][:3]
+        prompt = f"""Analyze this table and provide a brief summary of its purpose and content.
+
+        Table Headers: {', '.join(headers)}
+        Example Rows:
+        {json.dumps(example_rows, index=2)}
+
+        Provide a concise summary (2-3 sentences) that explains:
+        1. What this table appears to be tracking or documenting
+        2. What key information the columsn contain
+        """
+        response = self.openai_client.chat.completions.create(
+            model="gpt-40-mini",
+            messages=[{"role": "user", "content": prompt}]
+        )
+
         return response.choices[0].message.content.strip()
 
 

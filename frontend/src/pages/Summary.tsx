@@ -20,7 +20,7 @@ interface Document {
 
 interface SummaryRequest {
   id: string;
-  status: 'processing' | 'complete' | 'error';
+  status: "processing" | "complete" | "error";
   downloadUrl: string | null;
 }
 
@@ -104,7 +104,7 @@ const SummaryOptionsSelector: React.FC<{
       <Checkbox
         id="includeTables"
         checked={options.includeTables}
-        onCheckedChange={(checked) => 
+        onCheckedChange={(checked) =>
           onOptionsChange({ ...options, includeTables: checked as boolean })
         }
       />
@@ -131,11 +131,13 @@ const Summary: React.FC = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [summaryType, setSummaryType] = useState<string>("");
   const [summary, setSummary] = useState<string>("");
-  const [status, setStatus] = useState<'idle' | 'uploading' | 'processing' | 'complete' | 'error'>('idle');
+  const [status, setStatus] = useState<
+    "idle" | "uploading" | "processing" | "complete" | "error"
+  >("idle");
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [summaryRequests, setSummaryRequests] = useState<SummaryRequest[]>([]);
   const [summaryOptions, setSummaryOptions] = useState<SummaryOptions>({
-    includeTables: true
+    includeTables: true,
   });
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -164,71 +166,73 @@ const Summary: React.FC = () => {
 
   const generateSummary = async () => {
     if (documents.length === 0 || !summaryType) {
-        setStatus('error');
-        setSummary('Please upload documents and select a summary type');
-        return;
+      setStatus("error");
+      setSummary("Please upload documents and select a summary type");
+      return;
     }
 
     const requestId = Date.now().toString();
     const newRequest: SummaryRequest = {
-        id: requestId,
-        status: 'processing',
-        downloadUrl: null,
+      id: requestId,
+      status: "processing",
+      downloadUrl: null,
     };
     setSummaryRequests([...summaryRequests, newRequest]);
 
     const document = documents[0];
     const formData = new FormData();
-    formData.append('file', document.file);
-    formData.append('type', document.type);
-    formData.append('summary_type', summaryType);
-    formData.append('include_tables', summaryOptions.includeTables.toString());
+    formData.append("file", document.file);
+    formData.append("type", document.type);
+    formData.append("summary_type", summaryType);
+    formData.append("include_tables", summaryOptions.includeTables.toString());
 
     try {
-        setStatus('processing');
-        const response = await fetch('http://localhost:8000/example_generate_summary', {
-            method: 'POST',
-            body: formData,
-        });
+      setStatus("processing");
+      const response = await fetch("http://localhost:8000/generate_summary", {
+        method: "POST",
+        body: formData,
+      });
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.detail || 'Failed to generate summary');
-        }
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || "Failed to generate summary");
+      }
 
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
 
-        setSummaryRequests(prevRequests =>
-            prevRequests.map(req =>
-                req.id === requestId
-                    ? { ...req, status: 'complete', downloadUrl: url }
-                    : req
-            )
-        );
+      setSummaryRequests((prevRequests) =>
+        prevRequests.map((req) =>
+          req.id === requestId
+            ? { ...req, status: "complete", downloadUrl: url }
+            : req,
+        ),
+      );
 
-        setDocuments([]);
-        setSummaryType('');
-        setStatus('idle');
+      setDocuments([]);
+      setSummaryType("");
+      setStatus("idle");
     } catch (error) {
-        console.error('Error generating summary:', error);
-        setSummaryRequests(prevRequests =>
-            prevRequests.map(req =>
-                req.id === requestId
-                    ? { ...req, status: 'error', downloadUrl: null }
-                    : req
-            )
-        );
-        setStatus('error');
-        setSummary(error instanceof Error ? error.message : 'An unknown error occurred');
+      console.error("Error generating summary:", error);
+      setSummaryRequests((prevRequests) =>
+        prevRequests.map((req) =>
+          req.id === requestId
+            ? { ...req, status: "error", downloadUrl: null }
+            : req,
+        ),
+      );
+      setStatus("error");
+      setSummary(
+        error instanceof Error ? error.message : "An unknown error occurred",
+      );
     }
   };
 
   const downloadSummary = () => {
     if (downloadUrl) {
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = downloadUrl;
-      link.download = 'summary.docx';
+      link.download = "summary.docx";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -240,7 +244,9 @@ const Summary: React.FC = () => {
       <Card className="w-2/3 border border-solid border-[#5c5c5c] rounded-[0.25rem]">
         <CardHeader className="relative">
           <div className="absolute top-0 left-0 right-0 h-1/4 bg-[#005288]"></div>
-          <CardTitle className="relative z-10">Executive Summary Generator</CardTitle>
+          <CardTitle className="relative z-10">
+            Executive Summary Generator
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -261,16 +267,20 @@ const Summary: React.FC = () => {
             <div className="flex justify-center space-x-4">
               <Button
                 onClick={generateSummary}
-                disabled={status === 'processing' || documents.length === 0 || !summaryType}
+                disabled={
+                  status === "processing" ||
+                  documents.length === 0 ||
+                  !summaryType
+                }
                 className="bg-[#0078ae] hover:bg-[#005b84] text-white font-['Source_Sans_Pro_Web',_'Helvetica_Neue',_Helvetica,_Roboto,_Arial,_sans-serif] text-[1.06rem] border border-solid border-[#5c5c5c] rounded-[0.25rem]"
               >
-                {status === 'processing' ? (
+                {status === "processing" ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Processing...
                   </>
                 ) : (
-                  'Generate Summary'
+                  "Generate Summary"
                 )}
               </Button>
               <Button
